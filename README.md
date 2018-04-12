@@ -28,5 +28,5 @@
 	(7) text.clustering.cw 模块就是 Chinese-whispers 算法实现模块
 	
 ## 代码测试
-	cd roordir/app/text/clustering
+	cd app/text/clustering
 	python test.py
