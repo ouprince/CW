@@ -52,11 +52,8 @@ class ChineseWhispers():
         '''
         Build Graph
         '''
-        try:
-            self.add_nodes(data)
-            self.add_edges(size = neighbours, threshold = threshold)
-        except Exception as e:
-            print(e)
+        self.add_nodes(data)
+        self.add_edges(size = neighbours, threshold = threshold)
 
     def _index(self):
         '''
@@ -106,11 +103,16 @@ class ChineseWhispers():
         words, tags = tokenizer.word_segment(text)
         if len(words) == 0:
             raise BaseException("invalid tokenizer result")
-        matched = self.lucene.query(build_query_condition(words, tags), size = size)
+        try:
+            matched = self.lucene.query(build_query_condition(words, tags), size = size)
+        except:print ("lucene ....................error")
 
         adjacents = []
-        vec,_ = self.vtree.v(text)
-        if vec and len(vec) > 0:
+        try:
+            vec,_ = self.vtree.v(text)
+        except:print("KDTree .....................error")
+
+        if vec is not None and len(vec) > 0:
             for x,y,z in self.vtree.neighbours(vec, size = size):
                 adjacents.append(dict({
                                     "id": x,
@@ -132,7 +134,7 @@ class ChineseWhispers():
         Add edges for data
         '''
         print("add edges")
-        if self.data and len(self.data) > 0: pass
+        if self.data is not None and len(self.data) > 0: pass
         else: raise BaseException("add_edges: invalid nodes.")
 
         dup = set()
@@ -140,7 +142,7 @@ class ChineseWhispers():
             id, post = o
             try:
                 neighbours = self.neighbours(post, size = 10)
-                for x in neighbours:
+                for x in neighbours.keys():
                     nid = neighbours[x]['id']
                     if "%s|%s" % (id, nid) in dup or "%s|%s" % (nid, id) in dup:
                         continue
@@ -151,7 +153,7 @@ class ChineseWhispers():
                     post_repl = tokenizer.replacement(post_w)
                     npost_repl = tokenizer.replacement(npost_w)
 
-                    if len(post_repl) > 0 and len(npost_repl) > 0:
+                    if post_repl is not None and npost_repl is not None:
                         weight = similarity.compare(" ".join(post_repl) , " ".join(npost_repl), seg = False)
                         if weight > threshold: # filter out low weights
                             self.edges.append((id, nid, {'weight': weight}))
@@ -160,7 +162,7 @@ class ChineseWhispers():
         if len(self.edges) > 0:
             self.G.add_edges_from(self.edges)
             self.graphed = True
-            print("add_edges: done, size " % len(self.edges))
+            print("add_edges: done, size %d" %len(self.edges))
 
     def clust(self, iterations = 100):
         '''

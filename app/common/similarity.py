@@ -88,7 +88,10 @@ def _unigram_overlap(sentence1, sentence2):
 
     intersection = x & y #交集
     union = x | y        #并集
-    return ((float)(len(intersection)) / (float)(len(union)))
+    try:
+        return ((float)(len(intersection)) / (float)(len(union)))
+    except ZeroDivisionError:
+        return 0.0
 
 def _levenshtein_distance(sentence1, sentence2):
     first = sentence1.split()
