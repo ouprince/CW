@@ -30,3 +30,8 @@
 ## 代码测试
 	cd app/text/clustering
 	python test.py
+	
+	--*版本选择*--
+	初始版本:在test.py 中第119 行定义Chinese-whispers 类时 
+	cw = ChineseWhispers(version = '1.0') 或者不写版本则按默认为初始版本
+	调节版本: cw = ChineseWhispers(version = '2.0')
