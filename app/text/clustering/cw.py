@@ -239,9 +239,13 @@ class ChineseWhispers():
         if self.version == '1.0':
             return result
         elif self.version == '2.0':
-            print ("clusting ...")
+            print ("clusting result ...")
+            del_key = set()
+            matched_key = set()
             for k in tqdm(result.keys()):
+                if k in del_key:continue
                 for j in result.keys():
+                    if ("%s,%s" %(k,j) in matched_key) or ("%s,%s" %(j,k) in matched_key):continue
                     try:
                         if k == j:continue
                         post = self.dict[k]
@@ -255,5 +259,7 @@ class ChineseWhispers():
                             if weight > self.threshold:
                                 result[k] += result[j]
                                 del result[j]
+                                del_key.add(j)
                     except KeyError as e:pass
+                    matched_key.add("%s,%s" %(k,j))
             return result
