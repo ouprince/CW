@@ -58,7 +58,8 @@ def seg_jieba(body):
         if "type" in body and body["type"] == "nostopword":
             if o.word in jieba_stopwords: continue
         if "punct" in body and body["punct"] == False:
-            if o.flag.startswith("x"): continue
+            if o.flag.startswith("x"):continue
+        if o.flag in ('ns','nt','nz','nr','m'):continue
         words.append(o.word)
         tags.append(o.flag)
     assert len(words) == len(tags), "words and tags should be the same length with jieba tokenizer."
@@ -215,9 +216,12 @@ class Test(unittest.TestCase):
     def tearDown(self):
         pass
     def test_word_segment(self):
-        w, t = word_segment("添加入了Attention注意力分配机制后，使得Decoder在生成新的Target Sequence时，能得到之前Encoder编码阶段每个字符的隐藏层的>信息向量Hidden State，使得生成新序列的准确度提高。")
+        w, t = word_segment("下桑乐金现在怎么操作")
         for (x, y) in zip(w, t):
             print("word: %s, tag: %s" % (x, y))
+        
+        if '可以' in jieba_stopwords:
+            print ("in")
 def test():
     unittest.main()
 

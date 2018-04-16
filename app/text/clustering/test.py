@@ -108,6 +108,7 @@ class Test(unittest.TestCase):
         print("test_cw_clustring")
         to_ = os.path.join(rootdir, 'tmp', 'test_cw')
         from_ = os.path.join(rootdir, 'corpus', 'gfzq', 'gfzq.2017-08-25.visitor')
+        from_ = 'csv_result1'
         data = []
         with common_utils.smart_open(from_) as fin:
             for x in fin.readlines():
@@ -115,7 +116,7 @@ class Test(unittest.TestCase):
                 id = o[0].strip()
                 post = o[1].strip()
                 data.append([id, post])
-        cw = ChineseWhispers()
+        cw = ChineseWhispers(version = '2.0')
         cw.g(data)
         result = cw.clust(iterations = 300)
         indices = result.keys()

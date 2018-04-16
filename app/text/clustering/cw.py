@@ -26,7 +26,8 @@ class ChineseWhispers():
     '''
     Chinese Whispers Graph
     '''
-    def __init__(self):
+    def __init__(self,version = '1.0'):
+        self.version = version
         self.G = networkx.Graph()
         self.dict = dict()
         self.data = []
@@ -38,6 +39,9 @@ class ChineseWhispers():
         self.edges = []
         self.graph = None
         self.graphed = False
+        self.size = 5
+        self.threshold = None
+        print ("Chinese-Whispers version = %s" %self.version)
 
     def v(self, text):
         return self.vtree.v(text)
@@ -48,12 +52,13 @@ class ChineseWhispers():
         else:
             return None
 
-    def g(self, data, neighbours = 10, threshold = 0.6):
+    def g(self, data, neighbours = 5, threshold = 0.6):
         '''
         Build Graph
         '''
+        self.size = neighbours
         self.add_nodes(data)
-        self.add_edges(size = neighbours, threshold = threshold)
+        self.add_edges(size = self.size, threshold = threshold)
 
     def _index(self):
         '''
@@ -96,7 +101,7 @@ class ChineseWhispers():
         self.G.add_nodes_from(nodes)
         self._index()
         
-    def neighbours(self, text, size = 10):
+    def neighbours(self, text, size):
         '''
         Get neighbours
         '''
@@ -129,11 +134,12 @@ class ChineseWhispers():
                 neighbours[o['id']]['distance'] = o['distance']
         return neighbours
 
-    def add_edges(self, size = 10 , threshold = 0.6):
+    def add_edges(self, size , threshold = 0.6):
         '''
         Add edges for data
         '''
         print("add edges")
+        self.threshold = threshold
         if self.data is not None and len(self.data) > 0: pass
         else: raise BaseException("add_edges: invalid nodes.")
 
@@ -141,7 +147,7 @@ class ChineseWhispers():
         for o in tqdm(self.data):
             id, post = o
             try:
-                neighbours = self.neighbours(post, size = 10)
+                neighbours = self.neighbours(post, size = size)
                 for x in neighbours.keys():
                     nid = neighbours[x]['id']
                     if "%s|%s" % (id, nid) in dup or "%s|%s" % (nid, id) in dup:
@@ -155,7 +161,7 @@ class ChineseWhispers():
 
                     if post_repl is not None and npost_repl is not None:
                         weight = similarity.compare(" ".join(post_repl) , " ".join(npost_repl), seg = False)
-                        if weight > threshold: # filter out low weights
+                        if weight >= self.threshold: # filter out low weights
                             self.edges.append((id, nid, {'weight': weight}))
             except: pass # ignore any mistake
 
@@ -164,7 +170,7 @@ class ChineseWhispers():
             self.graphed = True
             print("add_edges: done, size %d" %len(self.edges))
 
-    def clust(self, iterations = 100):
+    def clust(self,iterations = 100):
         '''
         Cluster data
         '''
@@ -185,25 +191,38 @@ class ChineseWhispers():
             for (k,v) in enumerate(gn):
                 reorder[rg[k]] = v
             gn = reorder
+            if self.version == '1.0':
+                for node in gn:
+                    neighs = self.G[node]
+                    classes = {}
+                    for ne in neighs:
+                        if self.G.node[ne]['class'] in classes:
+                            classes[self.G.node[ne]['class']] += self.G[node][ne]['weight']
+                        else:
+                            classes[self.G.node[ne]['class']] = self.G[node][ne]['weight']
 
-            for node in gn:
-                neighs = self.G[node]
-                classes = {}
-                for ne in neighs:
-                    if self.G.node[ne]['class'] in classes:
-                        classes[self.G.node[ne]['class']] += self.G[node][ne]['weight']
-                    else:
-                        classes[self.G.node[ne]['class']] = self.G[node][ne]['weight']
-
-                maxsum = 0
-                maxclass = None
-                for c in classes.keys():
-                    if classes[c] > maxsum:
-                        maxsum = classes[c]
-                        maxclass = c
-                if maxclass != None:
-                    self.G.node[node]['class'] = maxclass
-
+                    maxsum = 0
+                    maxclass = None
+                    for c in classes.keys():
+                        if classes[c] > maxsum:
+                            maxsum = classes[c]
+                            maxclass = c
+                    if maxclass != None:
+                        self.G.node[node]['class'] = maxclass
+            elif self.version == '2.0':
+                for node in gn:
+                    neighs = self.G[node]
+                    maxsum = 0
+                    maxclass = None
+                    for ne in neighs:
+                        if self.G[node][ne]['weight'] > maxsum:
+                            maxsum = self.G[node][ne]['weight']
+                            maxclass = self.G.node[ne]['class']
+                    if maxclass != None:
+                        self.G.node[node]['class'] = maxclass
+            else:
+                raise BaseException("invalid version")
+            
         result = dict()
         gn = self.G.nodes()
         for nid in gn:
@@ -217,5 +236,24 @@ class ChineseWhispers():
             else:
                 result[c] = [nid]
 
-        return result
-                    
+        if self.version == '1.0':
+            return result
+        elif self.version == '2.0':
+            print ("clusting ...")
+            for k in tqdm(result.keys()):
+                for j in result.keys():
+                    try:
+                        if k == j:continue
+                        post = self.dict[k]
+                        npost = self.dict[j]
+                        post_w, post_t = tokenizer.word_segment(post)
+                        npost_w,npost_t = tokenizer.word_segment(npost)
+                        post_repl = tokenizer.replacement(post_w)
+                        npost_repl = tokenizer.replacement(npost_w)
+                        if post_repl is not None and npost_repl is not None:
+                            weight = similarity.compare(" ".join(post_repl) , " ".join(npost_repl), seg = False,version = self.version)
+                            if weight > self.threshold:
+                                result[k] += result[j]
+                                del result[j]
+                    except KeyError as e:pass
+            return result
